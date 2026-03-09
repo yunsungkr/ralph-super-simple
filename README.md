@@ -1,4 +1,4 @@
-# ralph-super-simple: Iterative Workflow for Claude Code
+# ralph-super-simple: Iterative Execution Patterns for AI Coding Agents
 
 `ralph-super-simple` is a repository of practical patterns for running AI coding agents in repeated loops until the job is finished.  
 Rather than focusing on a specific model implementation, it focuses on operating Claude Code, Codex CLI, and Gemini CLI around **phase-based planning, autonomous loops, and verification scripts**.

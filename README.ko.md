@@ -1,4 +1,4 @@
-# ralph-super-simple: Claude Code 반복 실행 워크플로우
+# ralph-super-simple: AI 코딩 에이전트 반복 실행 패턴
 
 `ralph-super-simple`은 AI 코딩 에이전트를 "끝날 때까지 반복 실행"하기 위한 실전 패턴을 정리한 저장소입니다.  
 특정 모델 구현체가 아니라, **phase 기반 계획 + autonomous loop + 검증 스크립트**를 중심으로 Claude Code, Codex CLI, Gemini CLI를 조합해 운영하는 방법에 집중합니다.
