@@ -32,8 +32,8 @@ for phase in phases:
     run(f"bash {phase}/verify.sh")
 ```
 
-핵심은 단순합니다.  
-`계획 분해 -> 반복 실행 -> 자동 검증`을 phase별로 고정하면, 에이전트 품질이 들쭉날쭉해도 전체 진행은 안정적으로 유지됩니다.
+핵심은 단순합니다.
+`계획 분해 → 반복 실행 → 자동 검증`을 phase별로 고정하면, 에이전트와 관계없이 세션에 제약을 받지 않고 phase 완료에 집중하여 장기간 실행도 안정적으로 수행합니다.
 
 ## 포함된 스킬
 
@@ -45,6 +45,8 @@ for phase in phases:
 | **ralph-discussion** | Codex/Gemini 교대 라운드 토론 자동화 | Codex CLI + Gemini CLI |
 
 ### ralphss-import: 독립 `claude -p` 반복 루프
+
+기본은 `claude -p`로 동작하지만, `run.sh` 내 CLI 호출을 Codex, Gemini 등으로 교체하면 그대로 사용할 수 있습니다.
 
 ```bash
 /ralphss-import my-plan.md     # .ralphss/ 생성

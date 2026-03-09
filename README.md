@@ -31,7 +31,7 @@ for phase in phases:
     run(f"bash {phase}/verify.sh")
 ```
 
-The idea is simple. If every phase follows **plan decomposition -> repeated execution -> automated verification**, overall progress stays stable even when agent quality is uneven.
+The idea is simple. Lock each phase into **plan decomposition → repeated execution → automated verification**, and you can run long-duration tasks reliably — free from session constraints, regardless of the agent.
 
 ## Included Skills
 
@@ -43,6 +43,8 @@ The idea is simple. If every phase follows **plan decomposition -> repeated exec
 | **ralph-discussion** | Automates alternating discussion rounds between Codex and Gemini | Codex CLI + Gemini CLI |
 
 ### ralphss-import: Independent `claude -p` Loop
+
+Runs with `claude -p` by default, but you can swap the CLI call in `run.sh` to Codex, Gemini, or any other agent.
 
 ```bash
 /ralphss-import my-plan.md     # creates .ralphss/
