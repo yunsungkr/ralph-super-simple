@@ -1,12 +1,28 @@
-# ralph-super-simple
+# ralph-super-simple: Claude Code 반복 실행 워크플로우
 
-이 리포지토리는 특정 에이전트 구현이 아니라, ralph 아이디어에서  착안한 **반복 실행 패턴**에 대한 설명입니다.
+`ralph-super-simple`은 AI 코딩 에이전트를 "끝날 때까지 반복 실행"하기 위한 실전 패턴을 정리한 저장소입니다.  
+특정 모델 구현체가 아니라, **phase 기반 계획 + autonomous loop + 검증 스크립트**를 중심으로 Claude Code, Codex CLI, Gemini CLI를 조합해 운영하는 방법에 집중합니다.
 
-스킬 실행을 위해 [Claude CLI](https://claude.com/claude-code), [OMC(oh-my-claudecode)](https://github.com/nicobailey-omc/oh-my-claudecode), [ralph-claude-code](https://github.com/frankbria/ralph-claude-code)를 사용하고, 반복 토론을 위해 [Codex CLI](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli)를 함께 사용합니다.
+구성에 사용하는 도구:
+- [Claude Code](https://claude.com/claude-code)
+- [OMC (oh-my-claudecode)](https://github.com/nicobailey-omc/oh-my-claudecode)
+- [ralph-claude-code](https://github.com/frankbria/ralph-claude-code)
+- [Codex CLI](https://github.com/openai/codex)
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 
----
+## TL;DR
 
-## 핵심
+> 단계별 계획이 잘 작성되고 이를 반복 수행할 수 있는 구조만 있으면,
+> 세션 제한 · 컨텍스트 관리 · 요약 · clear · 다시 시작에 대한 수고를 크게 줄일 수 있다.
+
+- **세션 제약**: 컨텍스트가 차면 요약 · 메모리 · clear · 다시 시작의 반복이 발생한다
+- **에러 시 중단**: 단순한 에러에도 세션이 끊겨 매번 개입해야 한다
+- **CLI 경계**: 단일 도구에 종속되면 그 도구의 한계가 곧 작업의 한계가 된다
+
+이 저장소는 **phase 단위 파일 구조 + 독립 세션 반복**으로 해결합니다.
+각 phase가 독립 세션이므로 컨텍스트 오염이 없고, 실행 CLI를 자유롭게 교체할 수 있습니다.
+
+## 핵심 패턴 (Core Loop)
 
 ```python
 for phase in phases:
@@ -16,62 +32,58 @@ for phase in phases:
     run(f"bash {phase}/verify.sh")
 ```
 
-이것이 전부입니다. 계획을 단계별 파일로 쪼개고, 각 단계를 독립 세션으로 반복 실행합니다. 한 세션에서는 하나의 단계 구현을 목표로 합니다.
+핵심은 단순합니다.  
+`계획 분해 -> 반복 실행 -> 자동 검증`을 phase별로 고정하면, 에이전트 품질이 들쭉날쭉해도 전체 진행은 안정적으로 유지됩니다.
 
-**단계별 계획이 핵심입니다.** Phase별 구조, 종료 조건, 검증 기준이 포함된 계획을 생성하고, 그 계획을 제공 되는 스킬을 사용하여 구현합니다. oh-my-claudecode의 `/ralplan`과 같은 스킬이 단계별 계획 생성에 잘 맞습니다.
-
----
-
-## 스킬
+## 포함된 스킬
 
 | 스킬 | 용도 | 필요 도구 |
-|------|------|-----------|
-| **ralphss-import** | 계획을 `claude -p` 루프로 독립 반복 실행 | Claude CLI |
-| **ralphcc-import** | ralph-claude-code 에이전트와 연동하여 반복 실행 | Claude CLI + ralph-claude-code |
-| **ralph-discussion** | 특정 토픽에 대해 멀티 모델 교대 토론 | Codex CLI + Gemini CLI |
+| --- | --- | --- |
+| **ralphss-import** | 계획을 독립 `claude -p` 루프로 반복 실행 | Claude Code |
+| **ralphcc-import** | `ralph-claude-code` 에이전트 기반 반복 실행 | Claude Code + ralph-claude-code |
+| **ralphcc-clear** | `ralph-claude-code` 실행 산출물 정리 | ralph-claude-code |
+| **ralph-discussion** | Codex/Gemini 교대 라운드 토론 자동화 | Codex CLI + Gemini CLI |
 
-### ralphss-import — `claude -p` 독립 반복
-
-구현 계획을 `.ralphss/` 파일 구조로 분배합니다. 해당 스킬은 `claude -p`로 동작합니다. 주 사용 CLI를 다른 것(codex, gemini 등)으로 교체 편집하여 사용할 수도 있습니다.
+### ralphss-import: 독립 `claude -p` 반복 루프
 
 ```bash
 /ralphss-import my-plan.md     # .ralphss/ 생성
-bash .ralphss/run.sh           # 외부 터미널에서 실행
+bash .ralphss/run.sh           # 별도 터미널에서 실행
 rm -rf .ralphss/               # 정리
 ```
 
-**/ralphss-import 실행 결과:**
-```
+생성 구조:
+
+```text
 .ralphss/
 ├── run.sh                     # 자율 루프 (claude -p 직접 호출)
 ├── MASTER_PLAN.md             # 전체 계획
-├── AGENT.md                   # 빌드/테스트 명령어
-├── specs/requirements.md      # 상세 스펙
+├── AGENT.md                   # 빌드/테스트 명령
+├── specs/requirements.md      # 상세 요구사항
 └── phases/
     ├── phase-1/
-    │   ├── PROMPT.md           # 루프 제어 지시문
-    │   ├── fix_plan.md         # 커밋 단위 태스크 체크리스트
-    │   └── verify.sh           # Phase별 자동 검증 스크립트
+    │   ├── PROMPT.md          # 루프 제어 지시문
+    │   ├── fix_plan.md        # 커밋 단위 체크리스트
+    │   └── verify.sh          # phase 완료 검증
     └── ...
 ```
 
-### ralphcc-import — ralph-claude-code 에이전트 연동
-
-구현 계획을 `.ralph/` 파일 구조로 분배합니다. ralph-claude-code의 `--resume` 세션 관리와 EXIT_SIGNAL 감지를 활용합니다.
+### ralphcc-import: ralph-claude-code 연동 루프
 
 ```bash
 /ralphcc-import                # .ralph/ 생성
-bash .ralph/run.sh             # 외부 터미널에서 실행 (Phase 자동 전환)
+bash .ralph/run.sh             # phase 자동 전환 실행
 /ralphcc-clear                 # ralph-claude-code 생성 파일 정리
 ```
 
-**/ralphcc-import 실행 결과:**
-```
+생성 구조:
+
+```text
 .ralph/
-├── run.sh                     # Phase 전환 + ralph 호출
+├── run.sh                     # phase 전환 + ralph 호출
 ├── MASTER_PLAN.md             # 전체 계획
-├── AGENT.md                   # 빌드/테스트 명령어
-├── specs/requirements.md      # 상세 스펙
+├── AGENT.md                   # 빌드/테스트 명령
+├── specs/requirements.md      # 상세 요구사항
 └── phases/
     ├── phase-1/
     │   ├── PROMPT.md
@@ -80,58 +92,63 @@ bash .ralph/run.sh             # 외부 터미널에서 실행 (Phase 자동 전
     └── ...
 ```
 
-### ralph-discussion — 멀티 모델 설계 토론
-
-특정 토픽에 대해 Codex, Gemini가 교대로 토론합니다. 3~5라운드.
+### ralph-discussion: Codex/Gemini 멀티 모델 토론
 
 ```bash
 /ralph-discussion my-topic.md  # .discussion/ 생성
-bash .discussion/run.sh        # codex ↔ gemini 교대 실행
+bash .discussion/run.sh        # codex <-> gemini 교대 실행
 ```
 
-**/ralph-discussion 실행 결과:**
-```
+생성 구조:
+
+```text
 .discussion/
-├── run.sh                     # 라운드 순회 실행기
-├── topic.md                   # 원본 토픽 (복사)
-├── synthesis.md               # 마지막 라운드 output 복사 (런타임 생성)
+├── run.sh                     # 라운드 실행기
+├── topic.md                   # 원본 토픽 복사본
+├── synthesis.md               # 마지막 라운드 종합본
 └── rounds/
     ├── round-1-codex/
-    │   ├── instruction.md     # 라운드 지시 (import 시 생성)
-    │   ├── prompt.md          # 실제 프롬프트 (런타임 생성)
-    │   └── output.md          # 응답 (런타임 생성)
+    │   ├── instruction.md     # 라운드 지시
+    │   ├── prompt.md          # 실제 프롬프트
+    │   └── output.md          # 라운드 응답
     ├── round-2-gemini/
-    │   └── ...
-    ├── round-3-codex/
     │   └── ...
     └── ...
 ```
 
----
+## 빠른 시작 (Quick Start)
 
-## 용어
-
-| 용어 | 설명 |
-|------|------|
-| `PROMPT.md` | Phase의 루프 제어 지시문입니다. 가볍게 유지하고 상세 스펙은 `specs/`에 분리합니다 |
-| `fix_plan.md` | 커밋 단위 태스크 체크리스트입니다. 1 태스크 = 1 커밋, 최대 3~5 파일 변경을 권장합니다 |
-| `verify.sh` | Phase 완료를 검증하는 스크립트입니다. `grep`, `pytest`, `curl` 등 구체적 명령으로 확인합니다 |
-| `EXIT_SIGNAL` | 루프 종료 신호입니다. [ralph-claude-code](https://github.com/frankbria/ralph-claude-code)에서 유래했습니다 |
-| `MASTER_PLAN.md` | 멀티 Phase 전체 계획입니다 |
-| `AGENT.md` | 빌드/테스트 명령어를 정의합니다 |
-| `run.sh` | 자율 루프 + Phase 전환을 수행하는 통합 스크립트입니다 |
-| `instruction.md` | discussion 라운드별 구체적 목표를 지시합니다 |
-| `synthesis.md` | discussion 최종 종합 결과입니다 |
-
----
-
-## 설치
+### 1) 스킬 설치
 
 ```bash
 cp -r skills/* your-project/.claude/skills/
 ```
 
----
+### 2) 첫 실행 예시
+
+```bash
+/ralphss-import my-plan.md
+bash .ralphss/run.sh
+```
+
+### 3) 추천 운영 규칙
+
+- `1 task = 1 commit` 규칙으로 `fix_plan.md`를 유지
+- `verify.sh`는 사람이 읽어도 바로 검증 가능한 명령으로 작성
+- phase 종료 조건은 반드시 `EXIT_SIGNAL`로 명시
+
+## 용어
+
+| 용어 | 설명 |
+| --- | --- |
+| `PROMPT.md` | phase 루프 제어 지시문 |
+| `fix_plan.md` | 커밋 단위 태스크 체크리스트 |
+| `verify.sh` | phase 완료를 확인하는 자동 검증 스크립트 |
+| `EXIT_SIGNAL` | 루프 종료 신호 |
+| `MASTER_PLAN.md` | 멀티 phase 전체 계획 |
+| `AGENT.md` | 빌드/테스트 명령 모음 |
+| `instruction.md` | discussion 라운드 목표 지시 |
+| `synthesis.md` | discussion 최종 종합 결과 |
 
 ## License
 
