@@ -1,33 +1,33 @@
 ---
 name: ralphss-disc
-description: 토픽 파일을 읽고 Codex/Gemini/Claude 순환 토론 구조를 생성. ralphss disc, discussion import 시 사용.
+description: Read a topic file and generate Codex/Gemini/Claude round-robin discussion structure. Use with ralphss disc or discussion import.
 ---
 
 # ralphss-disc
 
-토픽 파일을 읽고 `.ralphss/disc/{task_name}/` 구조로 Codex → Gemini → Claude 순환 설계 토론을 생성한다.
+Reads a topic file and generates a Codex → Gemini → Claude round-robin design discussion under `.ralphss/disc/{task_name}/`.
 
-> **이 스킬은 파일 생성만 수행한다.** 코드 수정, 테스트, git 조작 금지.
+> **This skill only creates files.** No code modification, testing, or git operations.
 
-## 워크플로우
+## Workflow
 ```
-토픽 파일 작성 → ralphss disc → 외부 터미널에서 bash .ralphss/disc/{task_name}/run.sh
+Write topic file → ralphss disc → run bash .ralphss/disc/{task_name}/run.sh in an external terminal
 ```
 
-## 입력
-- 토픽 파일 (마크다운). 설계 질문, 컨텍스트, 제약, 목표가 포함되어야 함.
+## Input
+- Topic file (markdown). Must include design questions, context, constraints, and goals.
 
-## task_name 결정
+## task_name Determination
 
-`{YYYY-MM-DD}_{slug}` 형식으로 자동 생성한다.
-- 날짜: 오늘 날짜
-- slug: 토픽 파일명에서 확장자를 제거하고 공백을 `-`로 치환
+Auto-generated in `{YYYY-MM-DD}_{slug}` format.
+- Date: today's date
+- slug: topic filename with extension removed, spaces replaced with `-`
 
-## 출력
+## Output
 ```
 .ralphss/disc/{task_name}/
-├── run.sh                      # 라운드 실행기 (고정)
-├── topic.md                    # 원본 토픽 (복사)
+├── run.sh                      # Round runner (fixed)
+├── topic.md                    # Original topic (copied)
 └── rounds/
     ├── round-1-codex/
     │   └── instruction.md
@@ -38,68 +38,75 @@ description: 토픽 파일을 읽고 Codex/Gemini/Claude 순환 토론 구조를
     └── ...
 ```
 
-런타임에 run.sh가 추가 생성:
+At runtime, run.sh additionally creates:
 ```
 rounds/round-N-{tool}/
-    ├── instruction.md          # (import 시 생성)
-    ├── prompt.md               # 실제 프롬프트 (토픽 + instruction + 이전 output)
-    └── output.md               # 도구 응답
-.ralphss/disc/{task_name}/synthesis.md  # 마지막 라운드 output 복사본
+    ├── instruction.md          # (created on import)
+    ├── prompt.md               # Actual prompt (topic + instruction + previous output)
+    └── output.md               # Tool response
+.ralphss/disc/{task_name}/synthesis.md  # Copy of last round output
 ```
 
 ---
 
-## import 시 Claude가 수행하는 작업
+## What Claude Does on Import
 
-### 1. 토픽 분석 → 라운드 수 결정
+### 1. Analyze Topic → Determine Number of Rounds
 
-토픽 복잡도와 질문 수에 따라 라운드 수를 결정:
-- **3 라운드**: 단순한 설계 질문, 명확한 선택지 (codex → gemini → claude)
-- **6 라운드**: 복잡한 아키텍처, 다수의 트레이드오프 (codex → gemini → claude × 2회)
+Determine the number of rounds based on topic complexity and number of questions:
+- **3 rounds**: Simple design questions, clear choices (codex → gemini → claude)
+- **6 rounds**: Complex architecture, many trade-offs (codex → gemini → claude × 2)
 
-도구 순환: `codex → gemini → claude → codex → gemini → claude`
-마지막 라운드는 항상 claude가 synthesis를 담당한다.
+Tool rotation: `codex → gemini → claude → codex → gemini → claude`
+The last round is always claude, responsible for synthesis.
 
-### 2. 라운드별 instruction.md 생성
+### 2. Generate instruction.md per Round
 
-각 라운드에 **구체적 목표**를 부여한다. 점진적으로 깊어지는 구조.
+Assign a **debate role** to each round. Core principles:
+- **Take a clear position. No neutrality.**
+- Must **rebut** the previous round's argument (except the first round).
+- Only the last round (claude) delivers a final verdict.
 
-**3라운드 예시:**
+**3-round example (ping-pong debate):**
 
-| 라운드 | 도구 | instruction.md 내용 |
-|--------|------|---------------------|
-| 1 | codex | 문제 분석 + 구조 제안 + 핵심 결정사항 3개 도출 |
-| 2 | gemini | 각 결정에 대한 리스크 분석 + 대안 제시 + 비교표 |
-| 3 | claude | 토론 종합 — 최종 결정 + 근거 + 미해결 사항 |
+| Round | Tool | instruction.md content |
+|-------|------|------------------------|
+| 1 | codex | Analyze the topic and **take a clear position**. 3 core arguments + specific evidence. No neutrality. |
+| 2 | gemini | **Attack the weaknesses** of the previous argument and **argue the opposing position**. Specifically point out why it is wrong + propose alternatives. |
+| 3 | claude | **Adjudicate** both arguments. State which side is stronger with evidence and deliver a final conclusion. Summarize unresolved issues. |
 
-**6라운드 예시:**
+**6-round example (deep debate):**
 
-| 라운드 | 도구 | instruction.md 내용 |
-|--------|------|---------------------|
-| 1 | codex | 문제 분석 + 구조 제안 + 핵심 결정사항 도출 |
-| 2 | gemini | 각 결정에 대한 리스크 분석 + 대안 제시 |
-| 3 | claude | 비교표 작성 + 선택 근거 문서화 |
-| 4 | codex | 추천안의 구체적 구현 설계 + 마이그레이션 경로 |
-| 5 | gemini | 최종 검토 — 엣지 케이스, 확장성, 운영 이슈 |
-| 6 | claude | 토론 종합 — 최종 설계 + ADR + 마이그레이션 로드맵 |
+| Round | Tool | instruction.md content |
+|-------|------|------------------------|
+| 1 | codex | Analyze the topic and **take a clear position**. Core arguments + specific evidence. No neutrality. |
+| 2 | gemini | **Attack the weaknesses** of the previous argument and **argue the opposing position**. Specifically point out why it is wrong. |
+| 3 | claude | Evaluate both arguments and **support the stronger side**, while suggesting improvements. No neutrality. |
+| 4 | codex | **Counter-rebut** the previous round's conclusion. Attack overlooked risks, edge cases, and feasibility. |
+| 5 | gemini | **Defend or revise and counter** the previous rebuttal. Clearly finalize your position. |
+| 6 | claude | **Adjudicate** the entire debate. Final conclusion + evidence + points of agreement + unresolved issues. |
 
-**instruction.md 형식:**
+**instruction.md format:**
 
 ```markdown
 ## Round Objective
-[구체적으로 무엇을 해야 하는지]
+[Specifically what must be argued, rebutted, or adjudicated]
+
+## Debate Rules
+- Take a clear position. No neutrality. No "both options are possible" fence-sitting.
+- Previous round output is provided. Must directly quote and rebut it.
+- Arguments must include specific evidence (code examples, numbers, cases).
 
 ## Output Format
-[어떤 섹션을 산출해야 하는지]
+[What sections to produce]
 
 ## Constraints
-- 파일 생성/수정 금지. 텍스트 출력만.
-- 이전 라운드 출력이 제공됨. 반드시 참조할 것.
+- No file creation or modification. Text output only.
 ```
 
-### 3. run.sh 생성
+### 3. Generate run.sh
 
-아래 템플릿을 그대로 사용. `{task_name}`을 실제 값으로 치환. `chmod +x` 포함.
+Use the template below as-is. Replace `{task_name}` with the actual value. Include `chmod +x`.
 
 ```bash
 #!/bin/bash
@@ -114,7 +121,7 @@ if [ ! -f "$TOPIC_FILE" ]; then
   exit 1
 fi
 
-# stream-json에서 텍스트 + 도구명 추출하는 jq 필터
+# jq filter to extract text + tool name from stream-json
 JQ_FILTER='
   if .type == "stream_event" then
     if .event.type == "content_block_delta" and .event.delta.type == "text_delta" then
@@ -209,7 +216,7 @@ for round_dir in "${round_dirs[@]}"; do
 
   cp "$prompt_file" "$round_dir/prompt.md"
 
-  # Execute — tool별 분기
+  # Execute — branch by tool
   if [ "$tool" = "codex" ]; then
     echo "  [Running codex...]"
     codex exec -o "$round_dir/output.md" \
@@ -233,7 +240,7 @@ for round_dir in "${round_dirs[@]}"; do
       | stdbuf -oL tee "$tmpfile" \
       | stdbuf -oL jq --unbuffered -j "$JQ_FILTER" 2>/dev/null
     set -e
-    # stream-json에서 최종 텍스트만 추출하여 output.md 저장
+    # Extract final text only from stream-json and save to output.md
     jq -j '
       if .type == "stream_event" then
         if .event.type == "content_block_delta" and .event.delta.type == "text_delta" then
@@ -288,36 +295,36 @@ echo ""
 
 ---
 
-## 실행 절차
+## Execution Steps
 
-1. 토픽 파일 읽기
-2. 토픽 복잡도 분석 → 라운드 수 결정 (3 또는 6)
-3. task_name 결정 (`YYYY-MM-DD_slug`)
+1. Read the topic file
+2. Analyze topic complexity → determine number of rounds (3 or 6)
+3. Determine task_name (`YYYY-MM-DD_slug`)
 4. `mkdir -p .ralphss/disc/{task_name}/rounds/round-{N}-{codex|gemini|claude}`
-5. `topic.md` 복사
-6. 라운드별 `instruction.md` 생성 (점진적 목표 부여)
-7. `run.sh` 생성 (위 템플릿, `{task_name}` 치환) + `chmod +x`
-8. 결과 요약 출력 (아래 형식)
-9. **종료**
+5. Copy `topic.md`
+6. Generate `instruction.md` per round (assign progressive objectives)
+7. Generate `run.sh` (template above, replace `{task_name}`) + `chmod +x`
+8. Print result summary (format below)
+9. **Stop**
 
-### 결과 요약 형식
+### Result Summary Format
 
-import 후 반드시 아래 형식으로 출력:
+After import, always output in the following format:
 
 ```
-Discussion import 완료.
+Discussion import complete.
 
-**토픽**: [topic.md 첫 줄 (# 제목)]
-**라운드**: [N] 라운드 (복잡도 판단 1줄 근거)
+**Topic**: [First line of topic.md (# title)]
+**Rounds**: [N] rounds (one-line rationale for complexity decision)
 
-| 라운드 | 도구 | 목표 |
-|--------|------|------|
-| 1 | codex | [instruction 1줄 요약] |
-| 2 | gemini | [instruction 1줄 요약] |
-| 3 | claude | [instruction 1줄 요약] |
+| Round | Tool | Objective |
+|-------|------|-----------|
+| 1 | codex | [one-line summary of instruction] |
+| 2 | gemini | [one-line summary of instruction] |
+| 3 | claude | [one-line summary of instruction] |
 | ... | ... | ... |
 
-**생성 파일**:
+**Generated files**:
 .ralphss/disc/{task_name}/
 ├── run.sh (chmod +x)
 ├── topic.md
@@ -327,34 +334,34 @@ Discussion import 완료.
     ├── round-3-claude/instruction.md
     └── ...
 
-**실행**: `bash .ralphss/disc/{task_name}/run.sh`
+**Run**: `bash .ralphss/disc/{task_name}/run.sh`
 ```
 
-## 실행 방법 (외부 터미널)
+## How to Run (External Terminal)
 
 ```bash
 cd your-project
 bash .ralphss/disc/{task_name}/run.sh
 ```
 
-정리:
+Cleanup:
 ```bash
 rm -rf .ralphss/disc/{task_name}/
 ```
 
-## 도구별 실행 환경
+## Tool Execution Environment
 
-| 도구 | 실행 방법 | 비고 |
-|------|-----------|------|
-| codex | `codex exec -o output.md -c 'sandbox_permissions=[]'` | 파일 탐색 차단 |
-| gemini | `gemini -p --approval-mode yolo` | YOLO/credentials 노이즈 필터링 |
-| claude | `DISABLE_OMC=1 claude -p --dangerously-skip-permissions --output-format text` | OMC 훅 비활성화 필수 |
+| Tool | How to run | Notes |
+|------|------------|-------|
+| codex | `codex exec -o output.md -c 'sandbox_permissions=[]'` | File exploration blocked |
+| gemini | `gemini -p --approval-mode yolo` | Filters YOLO/credentials noise |
+| claude | `DISABLE_OMC=1 claude -p --dangerously-skip-permissions --output-format text` | Must disable OMC hooks |
 
-> **claude 실행 시 주의**: `DISABLE_OMC=1` 환경변수로 OMC 훅을 비활성화해야 한다.
-> 프롬프트 내 프로젝트 용어가 OMC 키워드와 충돌하여 스킬이 오탐 호출되는 것을 방지한다.
+> **Note when running claude**: The `DISABLE_OMC=1` environment variable must be set to disable OMC hooks.
+> This prevents project terms in the prompt from conflicting with OMC keywords and triggering false skill invocations.
 
-## 금지 행동
-- 소스 코드 수정/삭제 금지
-- 테스트 실행 금지
-- git 조작 금지
-- `.ralphss/disc/{task_name}/` 외 파일 생성/수정 금지
+## Prohibited Actions
+- No source code modification or deletion
+- No test execution
+- No git operations
+- No file creation or modification outside `.ralphss/disc/{task_name}/`

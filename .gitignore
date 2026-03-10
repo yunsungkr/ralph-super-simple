@@ -1,0 +1,25 @@
+# 작업 산출물
+.ralphss/
+
+# 백업/임시
+*.bak
+*.backup
+*.tmp
+*.draft.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local-only
+.claude/
+docs/
+
+# OMC
+.omc/
