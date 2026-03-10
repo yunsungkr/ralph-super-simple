@@ -1,12 +1,11 @@
 # ralph-super-simple
 
-`ralph-super-simple`은 AI 코딩 에이전트를 "끝날 때까지 반복 실행"하기 위한 실전 패턴을 정리한 저장소입니다.  
+`ralph-super-simple`은 AI 코딩 에이전트를 "끝날 때까지 반복 실행"하기 위한 실전 패턴을 정리한 저장소입니다.
 특정 모델 구현체가 아니라, **phase 기반 계획 + autonomous loop + 검증 스크립트**를 중심으로 Claude Code, Codex CLI, Gemini CLI를 조합해 운영하는 방법에 집중합니다.
 
 구성에 사용하는 도구:
 - [Claude Code](https://claude.com/claude-code)
 - [OMC (oh-my-claudecode)](https://github.com/nicobailey-omc/oh-my-claudecode)
-- [ralph-claude-code](https://github.com/frankbria/ralph-claude-code)
 - [Codex CLI](https://github.com/openai/codex)
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 
@@ -39,25 +38,23 @@ for phase in phases:
 
 | 스킬 | 용도 | 필요 도구 |
 | --- | --- | --- |
-| **ralphss-import** | 계획을 독립 `claude -p` 루프로 반복 실행 | Claude Code |
-| **ralphcc-import** | `ralph-claude-code` 에이전트 기반 반복 실행 | Claude Code + ralph-claude-code |
-| **ralphcc-clear** | `ralph-claude-code` 실행 산출물 정리 | ralph-claude-code |
-| **ralph-discussion** | Codex/Gemini 교대 라운드 토론 자동화 | Codex CLI + Gemini CLI |
+| **ralphss-loop** | 계획을 독립 `claude -p` 루프로 반복 실행 | Claude Code |
+| **ralphss-disc** | Codex/Gemini/Claude 순환 라운드 토론 자동화 | Claude Code + Codex CLI + Gemini CLI |
 
-### ralphss-import: 독립 `claude -p` 반복 루프
+### ralphss-loop: 독립 `claude -p` 반복 루프
 
 기본은 `claude -p`로 동작하지만, `run.sh` 내 CLI 호출을 Codex, Gemini 등으로 교체하면 그대로 사용할 수 있습니다.
 
 ```bash
-/ralphss-import my-plan.md     # .ralphss/ 생성
-bash .ralphss/run.sh           # 별도 터미널에서 실행
-rm -rf .ralphss/               # 정리
+/ralphss-loop my-plan.md                          # .ralphss/loop/{task_name}/ 생성
+cd .ralphss/loop/{task_name} && bash run.sh       # 별도 터미널에서 실행
+rm -rf .ralphss/loop/{task_name}/                  # 정리
 ```
 
 생성 구조:
 
 ```text
-.ralphss/
+.ralphss/loop/{task_name}/
 ├── run.sh                     # 자율 루프 (claude -p 직접 호출)
 ├── MASTER_PLAN.md             # 전체 계획
 ├── AGENT.md                   # 빌드/테스트 명령
@@ -70,53 +67,48 @@ rm -rf .ralphss/               # 정리
     └── ...
 ```
 
-### ralphcc-import: ralph-claude-code 연동 루프
+### ralphss-disc: Codex/Gemini/Claude 멀티 모델 토론
 
 ```bash
-/ralphcc-import                # .ralph/ 생성
-bash .ralph/run.sh             # phase 자동 전환 실행
-/ralphcc-clear                 # ralph-claude-code 생성 파일 정리
+/ralphss-disc my-topic.md                          # .ralphss/disc/{task_name}/ 생성
+cd .ralphss/disc/{task_name} && bash run.sh        # Codex → Gemini → Claude 순환 실행
+rm -rf .ralphss/disc/{task_name}/                  # 정리
 ```
 
 생성 구조:
 
 ```text
-.ralph/
-├── run.sh                     # phase 전환 + ralph 호출
-├── MASTER_PLAN.md             # 전체 계획
-├── AGENT.md                   # 빌드/테스트 명령
-├── specs/requirements.md      # 상세 요구사항
-└── phases/
-    ├── phase-1/
-    │   ├── PROMPT.md
-    │   ├── fix_plan.md
-    │   └── verify.sh
-    └── ...
-```
-
-### ralph-discussion: Codex/Gemini 멀티 모델 토론
-
-```bash
-/ralph-discussion my-topic.md  # .discussion/ 생성
-bash .discussion/run.sh        # codex <-> gemini 교대 실행
-```
-
-생성 구조:
-
-```text
-.discussion/
-├── run.sh                     # 라운드 실행기
+.ralphss/disc/{task_name}/
+├── run.sh                     # 라운드 실행기 (이 폴더에서 바로 실행)
 ├── topic.md                   # 원본 토픽 복사본
-├── synthesis.md               # 마지막 라운드 종합본
+├── synthesis.md               # 마지막 claude 라운드 종합본
 └── rounds/
     ├── round-1-codex/
     │   ├── instruction.md     # 라운드 지시
-    │   ├── prompt.md          # 실제 프롬프트
+    │   ├── prompt.md          # 실제 프롬프트 (토픽 + 지시 + 이전 output)
     │   └── output.md          # 라운드 응답
     ├── round-2-gemini/
     │   └── ...
+    ├── round-3-claude/
+    │   └── ...
     └── ...
 ```
+
+### 통합 `.ralphss/` 디렉터리
+
+모든 스킬이 하나의 `.ralphss/` 루트를 공유하며, 유형과 날짜별 task name으로 구분됩니다:
+
+```text
+.ralphss/
+├── loop/
+│   ├── 2025-01-15_api-refactor/
+│   └── 2025-01-20_auth-module/
+└── disc/
+    ├── 2025-01-15_caching-strategy/
+    └── 2025-01-22_database-migration/
+```
+
+`.gitignore`에 `.ralphss/` 한 줄이면 전부 커버됩니다. 날짜 폴더로 히스토리가 보존되고, 불필요한 건 수동 삭제하면 됩니다.
 
 ## 빠른 시작 (Quick Start)
 
@@ -129,8 +121,8 @@ cp -r skills/* your-project/.claude/skills/
 ### 2) 첫 실행 예시
 
 ```bash
-/ralphss-import my-plan.md
-bash .ralphss/run.sh
+/ralphss-loop my-plan.md
+cd .ralphss/loop/{task_name} && bash run.sh
 ```
 
 ### 3) 추천 운영 규칙
@@ -151,6 +143,10 @@ bash .ralphss/run.sh
 | `AGENT.md` | 빌드/테스트 명령 모음 |
 | `instruction.md` | discussion 라운드 목표 지시 |
 | `synthesis.md` | discussion 최종 종합 결과 |
+
+## Acknowledgments
+
+이 저장소의 자율 루프 구조와 패턴은 [ralph-claude-code](https://github.com/frankbria/ralph-claude-code)에서 영감을 받았습니다.
 
 ## License
 
