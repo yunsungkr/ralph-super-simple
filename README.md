@@ -9,6 +9,8 @@ Tools used in this setup:
 - [Codex CLI](https://github.com/openai/codex)
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 
+> OMC is a multi-agent orchestration layer for Claude Code. It generates phase-separated plans (`/ralplan`) that feed directly into ralphss-loop, and minimizes failures by ensuring tasks are completed reliably — where a single agent session might stall or miss steps.
+
 ## TL;DR
 
 > If you have a well-written step-by-step plan and a structure that can execute it repeatedly, you can greatly reduce the effort spent on session limits, context management, summarizing, clearing, and restarting.

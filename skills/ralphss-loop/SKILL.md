@@ -25,6 +25,8 @@ Write plan file → ralphss loop → run bash .ralphss/loop/{task_name}/run.sh i
 ## Input
 - An implementation plan file (markdown). Must include exit conditions, per-phase tasks, and technical constraints.
 
+> **Tip**: Plans should be broken into clearly defined phases before importing. Monolithic plans will be treated as a single phase.
+
 ## task_name Determination
 
 Auto-generated in `{YYYY-MM-DD}_{slug}` format.

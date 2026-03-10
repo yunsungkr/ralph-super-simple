@@ -9,6 +9,8 @@
 - [Codex CLI](https://github.com/openai/codex)
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 
+> OMC는 Claude Code용 멀티 에이전트 오케스트레이션 레이어입니다. 단계별 실행 계획(`/ralplan`)을 생성하여 ralphss-loop에 바로 투입할 수 있고, 단일 에이전트 세션에서 발생할 수 있는 중단이나 누락을 최소화하여 작업을 확실히 마무리합니다.
+
 ## TL;DR
 
 > 단계별 계획이 잘 작성되고 이를 반복 수행할 수 있는 구조만 있으면,
