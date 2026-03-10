@@ -106,8 +106,6 @@ All skills share a single `.ralphss/` root, organized by type and dated task nam
     └── 2025-01-22_database-migration/
 ```
 
-Add `.ralphss/` to `.gitignore` — one line covers everything. History is preserved by date folders; delete manually when no longer needed.
-
 ## Quick Start
 
 ### 1) Install the skills

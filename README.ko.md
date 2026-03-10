@@ -108,8 +108,6 @@ rm -rf .ralphss/disc/{task_name}/                  # 정리
     └── 2025-01-22_database-migration/
 ```
 
-`.gitignore`에 `.ralphss/` 한 줄이면 전부 커버됩니다. 날짜 폴더로 히스토리가 보존되고, 불필요한 건 수동 삭제하면 됩니다.
-
 ## 빠른 시작 (Quick Start)
 
 ### 1) 스킬 설치
